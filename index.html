@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Music Lobby</title>
+
+<style>
+:root{--c1:#22c55e;--c2:#16a34a}
+*{box-sizing:border-box}
+body{
+  margin:0;height:100vh;font-family:system-ui;color:#fff;
+  background:linear-gradient(270deg,var(--c1),var(--c2));
+  background-size:400% 400%;
+  animation:bg 12s ease infinite;overflow:hidden
+}
+@keyframes bg{0%{background-position:0%}50%{background-position:100%}100%{background-position:0%}}
+
+#wrap{display:flex;height:100%}
+#left{
+  width:260px;padding:16px;background:rgba(0,0,0,.35);
+  backdrop-filter:blur(10px);overflow-y:auto
+}
+#right{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:16px
+}
+
+button{
+  width:100%;padding:14px;margin:8px 0;border:0;border-radius:999px;
+  background:var(--c1);color:#020617;font-weight:700;cursor:pointer;
+  transition:.25s
+}
+button:hover{transform:scale(1.07)}
+button:active{transform:scale(.95)}
+button.active{background:#facc15;box-shadow:0 0 18px #facc15}
+
+#playBtn{width:220px;font-size:20px;display:none}
+
+#topRight{
+  position:fixed;top:14px;right:14px;
+  display:flex;gap:8px
+}
+
+.panel{
+  position:fixed;right:20px;top:60px;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(10px);
+  padding:16px;border-radius:16px;
+  transform:translateY(-20px);opacity:0;pointer-events:none;
+  transition:.35s
+}
+.panel.show{transform:none;opacity:1;pointer-events:auto}
+
+input{
+  width:200px;padding:10px;border-radius:999px;
+  border:0;margin-bottom:10px
+}
+.error{color:#ff4d4d;font-weight:700}
+
+@media(max-width:720px){
+  #wrap{flex-direction:column}
+  #left{width:100%;display:flex;gap:8px;overflow-x:auto}
+  #left button{min-width:160px}
+}
+</style>
+</head>
+
+<body>
+<div id="wrap">
+  <div id="left">
+    <h3 id="title">Lobby Utama</h3>
+    <div id="list"></div>
+  </div>
+
+  <div id="right">
+    <button id="playBtn" onclick="togglePlay()">▶ Play</button>
+  </div>
+</div>
+
+<!-- TOP RIGHT -->
+<div id="topRight">
+  <button onclick="toggleVol()">🎧</button>
+  <button id="backBtn" onclick="backToMain()" style="display:none">⬅</button>
+  <button id="loginBtn" onclick="openLogin()">🔐</button>
+</div>
+
+<!-- VOLUME -->
+<div id="volPanel" class="panel">
+  <input id="vol" type="range" min="0" max="1" step="0.01">
+</div>
+
+<!-- LOGIN -->
+<div id="loginPanel" class="panel">
+  <input id="loginName" placeholder="nama">
+  <input id="loginPass" type="password" placeholder="password">
+  <button onclick="checkLogin()">Masuk</button>
+  <p id="err" class="error"></p>
+</div>
+
+<script>
+/* ===== DATA AUDIO 1–20 ===== */
+const playersData=[
+ {theme:"theme1",src:"audio1.mp3"},
+ {theme:"theme2",src:"audio2.mp3"},
+ {theme:"theme3",src:"audio3.mp3"},
+ {theme:"theme4",src:"audio4.mp3"},
+ {theme:"theme5",src:"audio5.mp3"},
+ {theme:"theme1",src:"audio6.mp3"},
+ {theme:"theme2",src:"audio7.mp3"},
+ {theme:"theme3",src:"audio8.mp3"},
+ {theme:"theme4",src:"audio9.mp3"},
+ {theme:"theme5",src:"audio10.mp3"},
+ {theme:"theme1",src:"audio11.mp3"},
+ {theme:"theme2",src:"audio12.mp3"},
+ {theme:"theme3",src:"audio13.mp3"},
+ {theme:"theme4",src:"audio14.mp3"},
+ {theme:"theme5",src:"audio15.mp3"},
+ {theme:"theme1",src:"audio16.mp3"},
+ {theme:"theme2",src:"audio17.mp3"},
+ {theme:"theme3",src:"audio18.mp3"},
+ {theme:"theme4",src:"audio19.mp3"},
+ {theme:"theme5",src:"audio20.mp3"}
+];
+
+const themesColor={
+ theme1:["#22c55e","#16a34a"],
+ theme2:["#38bdf8","#0284c7"],
+ theme3:["#a855f7","#7e22ce"],
+ theme4:["#f97316","#ea580c"],
+ theme5:["#ef4444","#b91c1c"]
+};
+
+const list=document.getElementById("list");
+const playBtn=document.getElementById("playBtn");
+const vol=document.getElementById("vol");
+const loginBtn=document.getElementById("loginBtn");
+const backBtn=document.getElementById("backBtn");
+
+let lobby="main";
+let audio=new Audio();
+let currentIndex=null;
+let playing=false;
+
+vol.value=0.8;
+audio.volume=vol.value;
+
+audio.onended=()=>{
+ playing=false;
+ playBtn.textContent="▶ Play";
+};
+
+function loadList(){
+ list.innerHTML="";
+ playBtn.style.display="none";
+ currentIndex=null;
+ playing=false;
+
+ loginBtn.style.display=lobby==="main"?"block":"none";
+ backBtn.style.display=lobby==="login"?"block":"none";
+
+ const start=lobby==="main"?0:10;
+ const end=lobby==="main"?10:20;
+
+ for(let i=start;i<end;i++){
+  const b=document.createElement("button");
+  b.textContent=`Player ${i+1}`;
+  b.onclick=()=>selectPlayer(i,b);
+  list.appendChild(b);
+ }
+}
+
+function selectPlayer(i,btn){
+ document.querySelectorAll("#left button").forEach(b=>b.classList.remove("active"));
+ btn.classList.add("active");
+
+ if(currentIndex!==i){
+  audio.pause();
+  audio.src=playersData[i].src;
+  audio.currentTime=0;
+  currentIndex=i;
+ }
+
+ const t=themesColor[playersData[i].theme];
+ document.documentElement.style.setProperty("--c1",t[0]);
+ document.documentElement.style.setProperty("--c2",t[1]);
+
+ playBtn.style.display="block";
+ playBtn.textContent="▶ Play";
+ playing=false;
+}
+
+function togglePlay(){
+ if(currentIndex===null)return;
+ if(!playing){
+  audio.play();
+  playing=true;
+  playBtn.textContent="⏸ Pause";
+ }else{
+  audio.pause();
+  playing=false;
+  playBtn.textContent="▶ Play";
+ }
+}
+
+vol.oninput=()=>audio.volume=vol.value;
+function toggleVol(){volPanel.classList.toggle("show");}
+function openLogin(){loginPanel.classList.toggle("show");}
+
+function checkLogin(){
+ if(loginName.value==="crush" && loginPass.value==="..."){
+  lobby="login";
+  title.textContent="Lobby Login";
+  loadList();
+  loginPanel.classList.remove("show");
+  err.textContent="";
+ }else{
+  err.textContent="password salah";
+ }
+}
+
+function backToMain(){
+ lobby="main";
+ title.textContent="Lobby Utama";
+ loadList();
+}
+
+loadList();
+</script>
+</body>
+</html>
